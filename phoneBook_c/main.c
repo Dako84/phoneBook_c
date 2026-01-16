@@ -1,35 +1,31 @@
 ﻿#define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
+#include <string.h>
 
 #define MAX_CONTACTS 100
 #define NAME_LEN 50
 #define PHONE_LEN 20
 
-
-struct Contact {
+typedef struct Contact {
     char name[NAME_LEN];
     char phone[PHONE_LEN];
-};
-
-void addContact(struct Contact contacts[], int* count);
-void printContacts(struct Contact contacts[], int count);
+} Contact;
 
 int safeInput(const char* format, void* value);
-
 int safeInputString(char* buffer, int size);
 
-int safeInputWithCheck(const char* format, void* value, int(*check)(void*));
+void addContact(Contact contacts[], int* count);
+void printContacts(Contact contacts[], int count);
+void searchContact(Contact contacts[], int count);
+void editContact(Contact contacts[], int count);
+void deleteContact(Contact contacts[], int* count);
+void saveToFile(Contact contacts[], int count);
+void loadFromFile(Contact contacts[], int* count);
 
 int main() {
-    struct Contact contacts[MAX_CONTACTS] = { 0 };  // מאגר אנשי קשר
-    int count = 0;                 // כמה אנשי קשר קיימים כרגע
+    Contact contacts[MAX_CONTACTS] = { 0 };
+    int count = 0;
     int choice = 0;
-
-    for (int i = 0; i < MAX_CONTACTS; i++) {
-        contacts[i].name[0] = '\0';
-        contacts[i].phone[0] = '\0';
-    }
-
 
     printf("Welcome to the Phone Book Application!\n");
 
@@ -37,24 +33,38 @@ int main() {
         printf("\n--- Menu ---\n");
         printf("1. Add Contact\n");
         printf("2. Print Contacts\n");
-        printf("3. Exit\n");
+        printf("3. Search Contact\n");
+        printf("4. Edit Contact\n");
+        printf("5. Delete Contact\n");
+        printf("6. Save Contacts to File\n");
+        printf("7. Load Contacts from File\n");
+        printf("8. Exit\n");
         printf("Choose an option: ");
-        //scanf("%d", &choice);
+
         safeInput("%d", &choice);
 
-
         if (choice == 1) {
-            // כאן נוסיף addContact בעתיד
-            printf("Add Contact selected.\n");
             addContact(contacts, &count);
-
         }
         else if (choice == 2) {
-            // כאן נוסיף printContacts בעתיד
-            printf("Print Contacts selected.\n");
             printContacts(contacts, count);
         }
         else if (choice == 3) {
+            searchContact(contacts, count);
+        }
+        else if (choice == 4) {
+            editContact(contacts, count);
+        }
+        else if (choice == 5) {
+            deleteContact(contacts, &count);
+        }
+        else if (choice == 6) {
+            saveToFile(contacts, count);
+        }
+        else if (choice == 7) {
+            loadFromFile(contacts, &count);
+        }
+        else if (choice == 8) {
             printf("Goodbye!\n");
             break;
         }
@@ -66,49 +76,6 @@ int main() {
     return 0;
 }
 
-void addContact(struct Contact contacts[], int* count) {
-    int index = -1;
-
-    for (int i = 0; i < MAX_CONTACTS; i++) {
-        if (contacts[i].name[0] == '\0') {
-            index = i;
-            break;
-        }
-    }
-
-    if (index == -1) {
-        printf("Phone book is full.\n");
-        return;
-    }
-
-    printf("Enter name: ");
-    safeInputString(contacts[index].name, NAME_LEN);
-
-
-    printf("Enter phone: ");
-    safeInputString(contacts[index].phone, PHONE_LEN);
-
-    (*count)++;
-    printf("Contact added successfully!\n");
-}
-
-void printContacts(struct Contact contacts[], int count)
-{
-    int printed = 0;
-
-    for (int i = 0; i < MAX_CONTACTS; i++) {
-        if (contacts[i].name[0] != '\0') {
-            printed++;
-            printf("Contact %d: Name: %s, Phone: %s\n",
-                printed, contacts[i].name, contacts[i].phone);
-        }
-    }
-
-    if (printed == 0) {
-        printf("No contacts to display.\n");
-    }
-}
-
 int safeInput(const char* format, void* value) {
     while (1) {
         if (scanf(format, value) == 1) {
@@ -116,9 +83,7 @@ int safeInput(const char* format, void* value) {
             while ((c = getchar()) != '\n' && c != EOF);
             return 1;
         }
-
         printf("Invalid input. Try again.\n");
-
         int c;
         while ((c = getchar()) != '\n' && c != EOF);
     }
@@ -126,38 +91,164 @@ int safeInput(const char* format, void* value) {
 
 int safeInputString(char* buffer, int size) {
     if (fgets(buffer, size, stdin) == NULL) {
-        printf("Input error. Try again.\n");
+        printf("Input error.\n");
         return 0;
     }
 
-    // הסרת תו ה־'\n' אם קיים
-    int len = 0;
-    while (buffer[len] != '\0') {
-        if (buffer[len] == '\n') {
-            buffer[len] = '\0';
-            break;
-        }
-        len++;
-    }
-
+    buffer[strcspn(buffer, "\n")] = '\0';
     return 1;
 }
 
-int safeInputWithCheck(
-    const char* format,
-    void* value,
-    int (*check)(void*)
-)
-{
-    while (1) {
-        if (!safeInput(format, value))
-            continue;
+void addContact(Contact contacts[], int* count) {
+    if (*count >= MAX_CONTACTS) {
+        printf("Phone book is full.\n");
+        return;
+    }
 
-        if (check == NULL || check(value))
-            return 1;
+    printf("Enter name: ");
+    safeInputString(contacts[*count].name, NAME_LEN);
 
-        printf("Value not valid. Try again.\n");
+    printf("Enter phone: ");
+    safeInputString(contacts[*count].phone, PHONE_LEN);
+
+    (*count)++;
+    printf("Contact added successfully!\n");
+}
+
+void printContacts(Contact contacts[], int count) {
+    if (count == 0) {
+        printf("No contacts to display.\n");
+        return;
+    }
+
+    for (int i = 0; i < count; i++) {
+        printf("Contact %d: Name: %s, Phone: %s\n",
+            i + 1, contacts[i].name, contacts[i].phone);
     }
 }
 
+void searchContact(Contact contacts[], int count) {
+    char query[NAME_LEN];
 
+    printf("Enter name to search: ");
+    safeInputString(query, NAME_LEN);
+
+    int found = 0;
+
+    for (int i = 0; i < count; i++) {
+        if (strstr(contacts[i].name, query)) {
+            found++;
+            printf("Match %d: Name: %s, Phone: %s\n",
+                found, contacts[i].name, contacts[i].phone);
+        }
+    }
+
+    if (!found)
+        printf("No contacts found.\n");
+}
+
+void editContact(Contact contacts[], int count) {
+    char searchName[NAME_LEN];
+    printf("Enter name to edit: ");
+    safeInputString(searchName, NAME_LEN);
+
+    int index = -1;
+
+    for (int i = 0; i < count; i++) {
+        if (strcmp(contacts[i].name, searchName) == 0) {
+            index = i;
+            break;
+        }
+    }
+
+    if (index == -1) {
+        printf("Contact not found.\n");
+        return;
+    }
+
+    printf("Editing contact: %s\n", contacts[index].name);
+
+    char newName[NAME_LEN];
+    char newPhone[PHONE_LEN];
+
+    printf("Enter new name (leave empty to keep current): ");
+    safeInputString(newName, NAME_LEN);
+
+    printf("Enter new phone (leave empty to keep current): ");
+    safeInputString(newPhone, PHONE_LEN);
+
+    if (strlen(newName) > 0)
+        strcpy(contacts[index].name, newName);
+
+    if (strlen(newPhone) > 0)
+        strcpy(contacts[index].phone, newPhone);
+
+    printf("Contact updated.\n");
+}
+
+void deleteContact(Contact contacts[], int* count) {
+    char query[NAME_LEN];
+
+    printf("Enter name to delete: ");
+    safeInputString(query, NAME_LEN);
+
+    for (int i = 0; i < *count; i++) {
+        if (strcmp(contacts[i].name, query) == 0) {
+
+            for (int j = i; j < *count - 1; j++) {
+                contacts[j] = contacts[j + 1];
+            }
+
+            (*count)--;
+
+            printf("Contact deleted.\n");
+            return;
+        }
+    }
+
+    printf("Contact not found.\n");
+}
+
+void saveToFile(Contact contacts[], int count) {
+    FILE* file = fopen("contacts.txt", "w");
+    if (!file) {
+        printf("Error opening file.\n");
+        return;
+    }
+
+    for (int i = 0; i < count; i++) {
+        fprintf(file, "%s;%s\n", contacts[i].name, contacts[i].phone);
+    }
+
+    fclose(file);
+    printf("Contacts saved.\n");
+}
+
+void loadFromFile(Contact contacts[], int* count) {
+    FILE* file = fopen("contacts.txt", "r");
+    if (!file) {
+        printf("No saved file found.\n");
+        return;
+    }
+
+    *count = 0;
+
+    char line[200];
+    while (fgets(line, sizeof(line), file)) {
+
+        line[strcspn(line, "\n")] = '\0';
+
+        char* name = strtok(line, ";");
+        char* phone = strtok(NULL, ";");
+
+        if (!name || !phone)
+            continue;
+
+        strcpy(contacts[*count].name, name);
+        strcpy(contacts[*count].phone, phone);
+        (*count)++;
+    }
+
+    fclose(file);
+    printf("Contacts loaded.\n");
+}
